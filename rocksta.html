@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <meta charset="utf-8">
+	    <title>ROCKSTA – The model rocket stability simulator</title>
+	    <style>
+	        body { margin: 0; }
+		    canvas { width: 100%; height: 100% }
+	    </style>
+    </head>
+    <body>
+        <script src="http://threejs.org/build/three.min.js"></script>
+        <script src="elements/triangle.js"></script>
+        <script src="elements/cone.js"></script>
+        <!-- <script src="elements/cylinder.js"></script> -->
+	    <script>
+            var scene = new THREE.Scene();
+            var camera = new THREE.PerspectiveCamera( 75, window.innerWidth / window.innerHeight, 0.1, 1000 );
+
+            var renderer = new THREE.WebGLRenderer();
+            renderer.setSize( window.innerWidth, window.innerHeight );
+            renderer.setClearColor(new THREE.Color(1.0, 1.0, 1.0), 1.0);
+            
+            document.body.appendChild( renderer.domElement );
+
+            // var n = 8;
+            // for(let i = 0; i < n; i++) {
+            //     let t = new Triangle(
+            //         [0.0, 0.0, 0.0],
+            //         [1.0, 0.3*Math.sin(2.0 * i/n * Math.PI), 0.3*Math.cos(2.0 * i/n * Math.PI)],
+            //         [1.0, 0.3*Math.sin(2.0 * (i+1)/n * Math.PI), 0.3*Math.cos(2.0 * (i+1)/n * Math.PI)]
+            //     );
+
+            //     scene.add(t.face);
+            //     scene.add(t.lines);
+            // }
+            let C = new Cone(
+                new THREE.Vector3(0, 0, 0),
+                new THREE.Vector3(2, 0, 0),
+                new THREE.Vector3(0, 0, 0.2),
+                4,
+                8
+            );
+            scene.add(...C.lines);
+            scene.add(...C.faces);
+
+            var theta = 0.0;
+            const cameraRadius = 5.0;
+
+            function animate() {
+                requestAnimationFrame(animate);
+
+                theta = (theta + 0.01) % (2 * Math.PI);
+                camera.position.x = cameraRadius * Math.sin(theta) / 1.414;
+                camera.position.y = -1.0 * camera.position.x; 
+                camera.position.z = cameraRadius * Math.cos(theta);
+                camera.lookAt(0.0, 0.0, 0.0);
+
+                renderer.render(scene, camera);
+            }
+
+            animate();
+	  </script>            
+    </body>
+</html>
