@@ -44,6 +44,18 @@
             scene.add(...Cy.lines);
             scene.add(...Cy.faces);
 
+            let Fin = new TrapezoidalFin(
+                new THREE.Vector3(7, 0, 0.2),
+                new THREE.Vector3(8, 0, 0.2),
+                new THREE.Vector3(0, 0, 0.6),
+                0.5,
+                0.8,
+                2,
+                4
+            );
+            scene.add(...Fin.lines);
+            scene.add(...Fin.faces);
+
             var theta = 0.0;
             const cameraRadius = 15.0;
 
