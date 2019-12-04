@@ -12,7 +12,8 @@
         <script src="http://threejs.org/build/three.min.js"></script>
         <script src="elements/triangle.js"></script>
         <script src="elements/cone.js"></script>
-        <!-- <script src="elements/cylinder.js"></script> -->
+        <script src="elements/cylinder.js"></script>
+        <script src="elements/trapezoidal-fin.js"></script>
 	    <script>
             var scene = new THREE.Scene();
             var camera = new THREE.PerspectiveCamera( 75, window.innerWidth / window.innerHeight, 0.1, 1000 );
@@ -23,29 +24,28 @@
             
             document.body.appendChild( renderer.domElement );
 
-            // var n = 8;
-            // for(let i = 0; i < n; i++) {
-            //     let t = new Triangle(
-            //         [0.0, 0.0, 0.0],
-            //         [1.0, 0.3*Math.sin(2.0 * i/n * Math.PI), 0.3*Math.cos(2.0 * i/n * Math.PI)],
-            //         [1.0, 0.3*Math.sin(2.0 * (i+1)/n * Math.PI), 0.3*Math.cos(2.0 * (i+1)/n * Math.PI)]
-            //     );
-
-            //     scene.add(t.face);
-            //     scene.add(t.lines);
-            // }
-            let C = new Cone(
+            let Co = new Cone(
                 new THREE.Vector3(0, 0, 0),
                 new THREE.Vector3(2, 0, 0),
                 new THREE.Vector3(0, 0, 0.2),
                 4,
                 8
             );
-            scene.add(...C.lines);
-            scene.add(...C.faces);
+            scene.add(...Co.lines);
+            scene.add(...Co.faces);
+
+            let Cy = new Cylinder(
+                new THREE.Vector3(2, 0, 0),
+                new THREE.Vector3(8, 0, 0),
+                new THREE.Vector3(0, 0, 0.2),
+                12,
+                8
+            );
+            scene.add(...Cy.lines);
+            scene.add(...Cy.faces);
 
             var theta = 0.0;
-            const cameraRadius = 5.0;
+            const cameraRadius = 15.0;
 
             function animate() {
                 requestAnimationFrame(animate);

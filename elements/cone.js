@@ -25,25 +25,25 @@ class Cone {
                 let segmentTipRadius1 = segmentTipRadius
                     .clone()
                     .applyAxisAngle(
-                        this.axis, 
+                        this.axis.clone().normalize(), 
                         c / numberOfSegmentsCircumferential * 2 * Math.PI
                     );
                 let segmentTipRadius2 = segmentTipRadius
                     .clone()
                     .applyAxisAngle(
-                        this.axis, 
+                        this.axis.clone().normalize(), 
                         (c + 1) / numberOfSegmentsCircumferential * 2 * Math.PI
                     );
                 let segmentBaseRadius1 = segmentBaseRadius
                     .clone()
                     .applyAxisAngle(
-                        this.axis, 
+                        this.axis.clone().normalize(), 
                         c / numberOfSegmentsCircumferential * 2 * Math.PI
                     );
                 let segmentBaseRadius2 = segmentBaseRadius
                     .clone()
                     .applyAxisAngle(
-                        this.axis, 
+                        this.axis.clone().normalize(), 
                         (c + 1) / numberOfSegmentsCircumferential * 2 * Math.PI
                     );
                 let p0 = segmentTip.clone().add(segmentTipRadius1);
