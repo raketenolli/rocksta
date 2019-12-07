@@ -11,7 +11,7 @@ class Triangle {
         triangleWire.vertices.push(this.v1);
         triangleWire.vertices.push(this.v2);
 
-        this.lineMaterial = new THREE.LineBasicMaterial( { color: 0x0000c0 } );
+        this.lineMaterial = new THREE.LineBasicMaterial( { color: 0x8080c0 } );
         this.faceMaterial = new THREE.MeshBasicMaterial( { color: 0xc0c0c0 } );
 
         this.lines = new THREE.Line(triangleWire, this.lineMaterial);
@@ -23,11 +23,27 @@ class Triangle {
             ...p2
         ]);
         triangleFace.setAttribute("position", new THREE.BufferAttribute(triangleVertices, 3));
-        this.face = new THREE.Mesh(triangleFace, this.faceMaterial);
 
         let d0 = new THREE.Vector3().subVectors(this.v1, this.v0);
         let d1 = new THREE.Vector3().subVectors(this.v2, this.v1);
         this.normal = d0.cross(d1).normalize();
+        let triangleNormal = new Float32Array([
+            this.normal.x,
+            this.normal.y,
+            this.normal.z,
+            this.normal.x,
+            this.normal.y,
+            this.normal.z,
+            this.normal.x,
+            this.normal.y,
+            this.normal.z
+        ]);
+        triangleFace.setAttribute("normal", new THREE.BufferAttribute(triangleNormal, 3));
+
+        triangleFace.computeFaceNormals();
+        // this.face = new THREE.Mesh(triangleFace, this.faceMaterial);
+        this.face = new THREE.Mesh(triangleFace, material);
+
     }
 
 }

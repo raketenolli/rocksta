@@ -11,25 +11,32 @@
     <body>
         <script src="http://threejs.org/build/three.min.js"></script>
         <script src="trackball-controls.js"></script>
+        <script src="elements/material.js"></script>
         <script src="elements/triangle.js"></script>
         <script src="elements/cone.js"></script>
         <script src="elements/cylinder.js"></script>
         <script src="elements/trapezoidal-fin.js"></script>
         <script src="elements/baseplate.js"></script>
-	    <script>
+        <script>
             var scene = new THREE.Scene();
             var aspect = window.innerWidth / window.innerHeight;
             var frustumSize = 2000;
-            // var camera = new THREE.PerspectiveCamera(75, aspect, 0.1, 1000);
             var camera = new THREE.OrthographicCamera(frustumSize * aspect / - 2, frustumSize * aspect / 2, frustumSize / 2, frustumSize / - 2, 0.01, 100000);
             camera.position.z = 1000;
 
-            var renderer = new THREE.WebGLRenderer();
+            var renderer = new THREE.WebGLRenderer({ antialias: true });
             renderer.setSize(window.innerWidth, window.innerHeight);
             renderer.setClearColor(new THREE.Color(1.0, 1.0, 1.0), 1.0);
             
             document.body.appendChild(renderer.domElement);
 
+            var ambientLight = new THREE.AmbientLight(0xc0c0ff);
+            scene.add(ambientLight);
+            
+            var directionalLight = new THREE.DirectionalLight(0xffffff, 1);
+            directionalLight.position.set(-1, 1, 1).normalize();
+            scene.add(directionalLight);
+            
             let Co = new Cone(
                 new THREE.Vector3(0, 0, 0),
                 new THREE.Vector3(250, 0, 0),
@@ -83,11 +90,6 @@
             scene.add(...B.lines);
             scene.add(...B.faces);
 
-            // var cameraLookAt = THREE.Vector3(0.0, 0.0, 0.0);
-            // var cameraAzimuth = 0.0;
-            // var cameraElevation = 0.0;
-            // var cameraRadius = 15.0;
-
             var controls = createControls(camera);
 
 			function createControls(camera) {
@@ -102,12 +104,6 @@
                 requestAnimationFrame(animate);
 
                 controls.update();
-
-                // camera.position.x = cameraRadius * Math.sin(theta) / 1.414;
-                // camera.position.y = -1.0 * camera.position.x; 
-                // camera.position.z = cameraRadius * Math.cos(theta);
-
-                // camera.lookAt(0.0, 0.0, 0.0);
 
                 renderer.render(scene, camera);
             }
