@@ -10,24 +10,30 @@
     </head>
     <body>
         <script src="http://threejs.org/build/three.min.js"></script>
+        <script src="trackball-controls.js"></script>
         <script src="elements/triangle.js"></script>
         <script src="elements/cone.js"></script>
         <script src="elements/cylinder.js"></script>
         <script src="elements/trapezoidal-fin.js"></script>
+        <script src="elements/baseplate.js"></script>
 	    <script>
             var scene = new THREE.Scene();
-            var camera = new THREE.PerspectiveCamera( 75, window.innerWidth / window.innerHeight, 0.1, 1000 );
+            var aspect = window.innerWidth / window.innerHeight;
+            var frustumSize = 2000;
+            // var camera = new THREE.PerspectiveCamera(75, aspect, 0.1, 1000);
+            var camera = new THREE.OrthographicCamera(frustumSize * aspect / - 2, frustumSize * aspect / 2, frustumSize / 2, frustumSize / - 2, 0.01, 100000);
+            camera.position.z = 1000;
 
             var renderer = new THREE.WebGLRenderer();
-            renderer.setSize( window.innerWidth, window.innerHeight );
+            renderer.setSize(window.innerWidth, window.innerHeight);
             renderer.setClearColor(new THREE.Color(1.0, 1.0, 1.0), 1.0);
             
-            document.body.appendChild( renderer.domElement );
+            document.body.appendChild(renderer.domElement);
 
             let Co = new Cone(
                 new THREE.Vector3(0, 0, 0),
-                new THREE.Vector3(2, 0, 0),
-                new THREE.Vector3(0, 0, 0.2),
+                new THREE.Vector3(250, 0, 0),
+                new THREE.Vector3(0, 0, 25),
                 4,
                 8
             );
@@ -35,38 +41,73 @@
             scene.add(...Co.faces);
 
             let Cy = new Cylinder(
-                new THREE.Vector3(2, 0, 0),
-                new THREE.Vector3(8, 0, 0),
-                new THREE.Vector3(0, 0, 0.2),
-                12,
+                new THREE.Vector3(250, 0, 0),
+                new THREE.Vector3(1450, 0, 0),
+                new THREE.Vector3(0, 0, 25),
+                10,
                 8
             );
             scene.add(...Cy.lines);
             scene.add(...Cy.faces);
 
+            let Cy2 = new Cylinder(
+                new THREE.Vector3(1450, 0, 0),
+                new THREE.Vector3(1550, 0, 0),
+                new THREE.Vector3(0, 0, 25),
+                4,
+                8
+            );
+            scene.add(...Cy2.lines);
+            scene.add(...Cy2.faces);
+
             let Fin = new TrapezoidalFin(
-                new THREE.Vector3(7, 0, 0.2),
-                new THREE.Vector3(8, 0, 0.2),
-                new THREE.Vector3(0, 0, 0.6),
-                0.5,
-                0.8,
-                2,
+                new THREE.Vector3(1450, 0, 25),
+                new THREE.Vector3(1550, 0, 25),
+                new THREE.Vector3(0, 0, 60),
+                50,
+                80,
+                4,
+                4,
                 4
             );
             scene.add(...Fin.lines);
             scene.add(...Fin.faces);
 
-            var theta = 0.0;
-            const cameraRadius = 15.0;
+            let B = new Baseplate(
+                new THREE.Vector3(1550, 0, 0),
+                new THREE.Vector3(1, 0, 0),
+                new THREE.Vector3(0, 0, 25),
+                8,
+                2
+            );
+            scene.add(...B.lines);
+            scene.add(...B.faces);
 
+            // var cameraLookAt = THREE.Vector3(0.0, 0.0, 0.0);
+            // var cameraAzimuth = 0.0;
+            // var cameraElevation = 0.0;
+            // var cameraRadius = 15.0;
+
+            var controls = createControls(camera);
+
+			function createControls(camera) {
+				let controls = new TrackballControls(camera, renderer.domElement);
+				controls.rotateSpeed = 3.0;
+				controls.zoomSpeed = 1.2;
+				controls.panSpeed = 0.4;
+                return controls;
+            }
+            
             function animate() {
                 requestAnimationFrame(animate);
 
-                theta = (theta + 0.01) % (2 * Math.PI);
-                camera.position.x = cameraRadius * Math.sin(theta) / 1.414;
-                camera.position.y = -1.0 * camera.position.x; 
-                camera.position.z = cameraRadius * Math.cos(theta);
-                camera.lookAt(0.0, 0.0, 0.0);
+                controls.update();
+
+                // camera.position.x = cameraRadius * Math.sin(theta) / 1.414;
+                // camera.position.y = -1.0 * camera.position.x; 
+                // camera.position.z = cameraRadius * Math.cos(theta);
+
+                // camera.lookAt(0.0, 0.0, 0.0);
 
                 renderer.render(scene, camera);
             }

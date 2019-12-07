@@ -3,18 +3,14 @@ class Cone {
         this.triangles = [];
         this.axis = new THREE.Vector3().subVectors(tip, baseCenter);
         this.lengthSegment = this.axis.clone().multiplyScalar(-1.0 / numberOfSegmentsLengthwise);
-        console.log(`axis: ${JSON.stringify(this.axis)}`);
-        console.log(`lengthSegment: ${JSON.stringify(this.lengthSegment)}`);
         
         for(let l = 0; l < numberOfSegmentsLengthwise; l++) {
             let segmentTip = tip
                 .clone()
                 .add(this.lengthSegment.clone().multiplyScalar(l));
-            console.log(`segmentTip: ${JSON.stringify(segmentTip)}`);
             let segmentBase = tip
                 .clone()
                 .add(this.lengthSegment.clone().multiplyScalar(l + 1));
-            console.log(`segmentBase: ${JSON.stringify(segmentBase)}`);
             for(let c = 0; c < numberOfSegmentsCircumferential; c++) {
                 let segmentTipRadius = baseRadius
                     .clone()
