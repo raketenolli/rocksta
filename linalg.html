@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <meta charset="utf-8">
+	    <title>ROCKSTA – The model rocket stability simulator – using linear algebra, yay!</title>
+    </head>
+    <body>
+        <h2>Rocksta</h2>
+        <div id="matrix"></div>
+        <div id="output"></div>
+        <script type="application/x-javascript" src="https://mlweb.loria.fr/lalolab/lalolib.js"></script>
+        <script>
+            var lab = new Lalolab("mylab",false,"./");
+            var outputElement = document.querySelector("#output");
+            var matrixElement = document.querySelector("#matrix");
+            outputElement.innerHTML = "Create matrix ...";
+            matrixElement.innerHTML = "(matrix will be here)";
+            lab.do("X = rand(5,5)");
+            lab.do("X.toArray()", res => {
+                matrixElement.innerHTML = JSON.stringify(res).replace(/\],\[/g, "],<br>[");
+            });
+	        lab.do("svd(X)", function ( result ) {
+		        outputElement.innerHTML = "The singular values are " + result[0] + ", " + result[1] + "..."; 
+            });
+        </script>
+    </body>
+</html>
