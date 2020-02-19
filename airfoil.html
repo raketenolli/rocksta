@@ -5,15 +5,102 @@
     </head>
     <body>
         <div id="#pts"></div>
+        <div id="#elem"></div>
         <canvas id="#airfoil" width=1010 height=310 style="width:1000px; height:300px"></canvas>
         <script>
+            class Point {
+                constructor(XorR, YorTheta, inPolarCoordinates = false) {
+                    if(!inPolarCoordinates) {
+                        this._x = XorR;
+                        this._y = YorTheta;
+                        this._R = Math.sqrt(XorR*XorR + YorTheta*YorTheta);
+                        this._theta = Math.atan2(YorTheta, XorR);
+                    } else {
+                        this._R = XorR;
+                        this._theta = YorTheta;
+                        this._x = XorR * Math.cos(YorTheta);
+                        this._y = XorR * Math.sin(YorTheta);
+                    }
+                }
+
+                setPosition(XorR, YorTheta, inPolarCoordinates = false) {
+                    if(!inPolarCoordinates) {
+                        this._x = XorR;
+                        this._y = YorTheta;
+                        this._R = Math.sqrt(XorR*XorR + YorTheta*YorTheta);
+                        this._theta = Math.atan2(YorTheta, XorR);
+                    } else {
+                        this._R = XorR;
+                        this._theta = YorTheta;
+                        this._x = XorR * Math.cos(YorTheta);
+                        this._y = XorR * Math.sin(YorTheta);
+                    }
+                }
+
+                get x() { return this._x; }
+                get y() { return this._y; }
+                get R() { return this._R; }
+                get theta() { return this._theta; }
+            }
+
+            class DoubletConstant2D {
+                constructor(point1, point2) {
+                    this.p1 = point1;
+                    this.p2 = point2;
+                }
+
+                transformToElementCoordinates(point) {
+                    let dx = point.x - this.p1.x;
+                    let dy = point.y - this.p1.y;
+                    let R = Math.sqrt(dx*dx + dy*dy);
+                    let theta = Math.atan2(dy, dx);
+
+                    return new Point(R, theta, true);
+                }
+
+                getInducedPotentialAt(point) {
+                    let pointInLocal = this.transformToElementCoordinates(point);
+                    let atan2AtPoint1 = Math.atan2(pointInLocal.z, pointInLocal.x - this.point1.x);
+                    let atan2AtPoint2 = Math.atan2(pointInLocal.z, pointInLocal.x - this.point2.x);
+                    let Phi = 1 / (2* Math.PI) * (atan2AtPoint2 - atan2AtPoint1);
+                }
+
+                getInducedVelocityAt(point) {
+                    let p = this.transformToElementCoordinates(point);
+                    let ru1 = p.z / ((p.x-this.p1.x)*(p.x-this.p1.x) + p.z*p.z);
+                    let ru2 = p.z / ((p.x-this.p2.x)*(p.x-this.p2.x) + p.z*p.z);
+                    let rw1 = (p.x - this.p1.x) / ((p.x-this.p1.x)*(p.x-this.p1.x) + p.z*p.z);
+                    let rw2 = (p.x - this.p2.x) / ((p.x-this.p2.x)*(p.x-this.p2.x) + p.z*p.z);
+                    let u = -1 / (2 * Math.PI) * (ru1 - ru2);
+                    let w = 1 / (2 * Math.PI) * (rw1 - rw2);
+                    return {
+                        u: u,
+                        w: w
+                    }
+                }
+
+                getNormalVector() {
+                    let dx = this.p2.x - this.p1.x;
+                    let dy = this.p2.y - this.p1.y;
+                    let l = Math.sqrt(dx*dx + dy*dy);
+                    return {
+                        x: dy / l,
+                        y : -dx / l
+                    }
+                }
+
+                getCollocationPoint() {
+                    return new Point((this.p1.x + this.p2.x) / 2, (this.p1.y + this.p2.y) / 2, false);
+                }
+            }
+
             var canvas = document.getElementById("#airfoil");
             var canvas2D = canvas.getContext("2d");
             canvas2D.beginPath();
             canvas2D.moveTo(1005, 155);
 
             var points = [];
-            var controlPoints = [];
+            var elements = [];
             for(let i = 0; i <= 100; i++) {
                 let theta = Math.PI * i / 100.0;
                 let x = Math.pow(Math.cos(theta), 2);
@@ -22,21 +109,24 @@
                 let x3 = Math.pow(x, 3);
                 let x4 = Math.pow(x, 4);
                 let y = (i > 50 ? -1 : 1) * 5 * 0.12 * (0.2969 * sqrx - 0.1260 * x - 0.3516 * x2 + 0.2843 * x3 - 0.1015 * x4);
-                points.push([x, y]);
+                let thisPoint = new Point(x, y);
+                points.push(thisPoint);
                 if(i >= 1) {
                     let lastPoint = points[points.length - 2];
-                    controlPoints.push([(x + lastPoint[0]) / 2, (y + lastPoint[1]) / 2]);
+                    elements.push(new DoubletConstant2D(lastPoint, thisPoint));
                 }
                 canvas2D.lineTo(5 + 1000 * x, 155 - 1000 * y);
             }
             canvas2D.stroke();
-            for(let controlPoint of controlPoints) {
+            for(let element of elements) {
+                let controlPoint = element.getCollocationPoint();
                 canvas2D.beginPath();
-                canvas2D.arc(5 + controlPoint[0] * 1000, 155 - controlPoint[1] * 1000, 4, 0, 2 * Math.PI);
+                canvas2D.arc(5 + controlPoint.x * 1000, 155 - controlPoint.y * 1000, 4, 0, 2 * Math.PI);
                 canvas2D.strokeStyle = "blue";
                 canvas2D.stroke();
             }
             document.getElementById("#pts").innerHTML = JSON.stringify(points);
+            document.getElementById("#elem").innerHTML = JSON.stringify(elements);
         </script>
     </body>
 </html>
