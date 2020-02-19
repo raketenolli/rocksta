@@ -6,7 +6,9 @@
     <body>
         <div id="#pts"></div>
         <div id="#elem"></div>
+        <div id="infl"></div>
         <canvas id="#airfoil" width=1010 height=310 style="width:1000px; height:300px"></canvas>
+        <script type="application/x-javascript" src="https://mlweb.loria.fr/lalolab/lalolib.js"></script>
         <script>
             class Point {
                 constructor(XorR, YorTheta, inPolarCoordinates = false) {
@@ -67,10 +69,10 @@
 
                 getInducedVelocityAt(point) {
                     let p = this.transformToElementCoordinates(point);
-                    let ru1 = p.z / ((p.x-this.p1.x)*(p.x-this.p1.x) + p.z*p.z);
-                    let ru2 = p.z / ((p.x-this.p2.x)*(p.x-this.p2.x) + p.z*p.z);
-                    let rw1 = (p.x - this.p1.x) / ((p.x-this.p1.x)*(p.x-this.p1.x) + p.z*p.z);
-                    let rw2 = (p.x - this.p2.x) / ((p.x-this.p2.x)*(p.x-this.p2.x) + p.z*p.z);
+                    let ru1 = p.y / ((p.x-this.p1.x)*(p.x-this.p1.x) + p.y*p.y);
+                    let ru2 = p.y / ((p.x-this.p2.x)*(p.x-this.p2.x) + p.y*p.y);
+                    let rw1 = (p.x - this.p1.x) / ((p.x-this.p1.x)*(p.x-this.p1.x) + p.y*p.y);
+                    let rw2 = (p.x - this.p2.x) / ((p.x-this.p2.x)*(p.x-this.p2.x) + p.y*p.y);
                     let u = -1 / (2 * Math.PI) * (ru1 - ru2);
                     let w = 1 / (2 * Math.PI) * (rw1 - rw2);
                     return {
@@ -99,10 +101,11 @@
             canvas2D.beginPath();
             canvas2D.moveTo(1005, 155);
 
+            var numberOfElements = 100;
             var points = [];
             var elements = [];
-            for(let i = 0; i <= 100; i++) {
-                let theta = Math.PI * i / 100.0;
+            for(let i = 0; i <= numberOfElements; i++) {
+                let theta = Math.PI * i / numberOfElements;
                 let x = Math.pow(Math.cos(theta), 2);
                 let sqrx = Math.sqrt(x);
                 let x2 = Math.pow(x, 2);
@@ -125,8 +128,38 @@
                 canvas2D.strokeStyle = "blue";
                 canvas2D.stroke();
             }
-            document.getElementById("#pts").innerHTML = JSON.stringify(points);
-            document.getElementById("#elem").innerHTML = JSON.stringify(elements);
+            // document.getElementById("#pts").innerHTML = JSON.stringify(points);
+            // document.getElementById("#elem").innerHTML = JSON.stringify(elements);
+
+            var influenceElement = document.getElementById("infl");
+            influenceElement.innerHTML = "Test";
+
+            var lab = new Lalolab("mylab",false,"./");
+            lab.do("X = rand(5,5)");
+            lab.do("X.toArray()", res => {
+                influenceElement.innerHTML = JSON.stringify(res).replace(/\],\[/g, "],<br>[");
+            });
+
+            lab.do(`A = zeros(${numberOfElements+1},${numberOfElements+1})`);
+            lab.do("A.toArray()", res => {
+                // influenceElement.innerHTML = JSON.stringify(res).replace(/\],\[/g, "],<br>[");
+                influenceElement.innerHTML = "Converted to Array"
+            });
+            for(let from = 0; from < 5; from++) {
+                for(let to = 0; to < 5; to++) {
+                    let fromElement = elements[from];
+                    let toElement = elements[to];
+                    let inducedVelocity = fromElement.getInducedVelocityAt(toElement.getCollocationPoint());
+                    // console.log("Induced velocity: " + JSON.stringify(inducedVelocity));
+                    // console.log("Normal vector: " + JSON.stringify(toElement.getNormalVector()));
+                    let influence = inducedVelocity.u * toElement.getNormalVector().x + inducedVelocity.w * toElement.getNormalVector().y;
+                    // console.log(influence);
+                    lab.do(`A[${to},${from}] = ${influence}`);
+                }
+            }
+            lab.do("A.toArray()", res => {
+                influenceElement.innerHTML = JSON.stringify(res).replace(/\],\[/g, "],<br>[");
+            });
         </script>
     </body>
 </html>
