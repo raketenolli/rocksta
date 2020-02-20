@@ -8,7 +8,9 @@
         <div id="#elem"></div>
         <div id="infl"></div>
         <canvas id="#airfoil" width=1010 height=310 style="width:1000px; height:300px"></canvas>
-        <script type="application/x-javascript" src="https://mlweb.loria.fr/lalolab/lalolib.js"></script>
+        <!-- <script type="application/x-javascript" src="https://mlweb.loria.fr/lalolab/lalolib.js"></script> -->
+        <script type="application/x-javascript" src="lalolib.js"></script>
+        <script type="application/x-javascript" src="lalolibworker.js"></script>
         <script>
             class Point {
                 constructor(XorR, YorTheta, inPolarCoordinates = false) {
@@ -101,6 +103,13 @@
             canvas2D.beginPath();
             canvas2D.moveTo(1005, 155);
 
+            var alpha = 1.0; // in degrees!
+            var airspeed = 1.0;
+            var freeStream = {
+                u: airspeed * Math.cos(alpha * Math.PI / 180),
+                w: airspeed * Math.sin(alpha * Math.PI / 180)
+            }
+            
             var numberOfElements = 100;
             var points = [];
             var elements = [];
@@ -132,7 +141,6 @@
             // document.getElementById("#elem").innerHTML = JSON.stringify(elements);
 
             var influenceElement = document.getElementById("infl");
-            influenceElement.innerHTML = "Test";
 
             var lab = new Lalolab("mylab",false,"./");
             lab.do("X = rand(5,5)");
@@ -145,8 +153,8 @@
                 // influenceElement.innerHTML = JSON.stringify(res).replace(/\],\[/g, "],<br>[");
                 influenceElement.innerHTML = "Converted to Array"
             });
-            for(let from = 0; from < 5; from++) {
-                for(let to = 0; to < 5; to++) {
+            for(let from = 0; from < numberOfElements; from++) {
+                for(let to = 0; to < numberOfElements; to++) {
                     let fromElement = elements[from];
                     let toElement = elements[to];
                     let inducedVelocity = fromElement.getInducedVelocityAt(toElement.getCollocationPoint());
@@ -157,8 +165,33 @@
                     lab.do(`A[${to},${from}] = ${influence}`);
                 }
             }
+            lab.do(`A[${numberOfElements},0] = 1.0`);
+            lab.do(`A[${numberOfElements},${numberOfElements}-1] = -1.0`);
+            lab.do(`A[${numberOfElements},${numberOfElements}] = 1.0`);
             lab.do("A.toArray()", res => {
+                // influenceElement.innerHTML = JSON.stringify(res).replace(/\],\[/g, "],<br>[");
+                influenceElement.innerHTML = "Influence matrix calculated";
+            });
+
+            lab.do(`R = zeros(${numberOfElements}+1)`);
+            for(let i = 0; i < numberOfElements; i++) {
+                let element = elements[i];
+                let localFreeStreamComponent = -(freeStream.u * element.getNormalVector().x + freeStream.w * element.getNormalVector().y);
+                // console.log(localFreeStreamComponent);
+                lab.do(`R[${i}] = ${localFreeStreamComponent}`);
+            }
+
+            // lab.do("R.toArray()", res => {
+            //     influenceElement.innerHTML = "Right hand side calculated";
+            // });
+
+            lab.do("Mu = A \ R", res => {
+                influenceElement.innerHTML = "System solved, doublet strengths calculated";
+            });
+
+            lab.do("Mu.toArray()", res => {
                 influenceElement.innerHTML = JSON.stringify(res).replace(/\],\[/g, "],<br>[");
+                // influenceElement.innerHTML = "Influence matrix calculated";
             });
         </script>
     </body>
