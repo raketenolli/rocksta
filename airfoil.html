@@ -8,9 +8,9 @@
         <div id="#elem"></div>
         <div id="infl"></div>
         <canvas id="#airfoil" width=1010 height=310 style="width:1000px; height:300px"></canvas>
-        <!-- <script type="application/x-javascript" src="https://mlweb.loria.fr/lalolab/lalolib.js"></script> -->
-        <script type="application/x-javascript" src="lalolib.js"></script>
-        <script type="application/x-javascript" src="lalolibworker.js"></script>
+        <canvas id="#cpplot" width=1010 height=1010 style="width:1000px; height:1000px"></canvas>
+        <script src="lalolib.js"></script>
+        <script src="lalolibworker.js"></script>
         <script>
             class Point {
                 constructor(XorR, YorTheta, inPolarCoordinates = false) {
@@ -71,10 +71,12 @@
 
                 getInducedVelocityAt(point) {
                     let p = this.transformToElementCoordinates(point);
-                    let ru1 = p.y / ((p.x-this.p1.x)*(p.x-this.p1.x) + p.y*p.y);
-                    let ru2 = p.y / ((p.x-this.p2.x)*(p.x-this.p2.x) + p.y*p.y);
-                    let rw1 = (p.x - this.p1.x) / ((p.x-this.p1.x)*(p.x-this.p1.x) + p.y*p.y);
-                    let rw2 = (p.x - this.p2.x) / ((p.x-this.p2.x)*(p.x-this.p2.x) + p.y*p.y);
+                    let p1 = this.transformToElementCoordinates(this.p1);
+                    let p2 = this.transformToElementCoordinates(this.p2);
+                    let ru1 = p.y / ((p.x-p1.x)*(p.x-p1.x) + p.y*p.y);
+                    let ru2 = p.y / ((p.x-p2.x)*(p.x-p2.x) + p.y*p.y);
+                    let rw1 = (p.x - p1.x) / ((p.x-p1.x)*(p.x-p1.x) + p.y*p.y);
+                    let rw2 = (p.x - p2.x) / ((p.x-p2.x)*(p.x-p2.x) + p.y*p.y);
                     let u = -1 / (2 * Math.PI) * (ru1 - ru2);
                     let w = 1 / (2 * Math.PI) * (rw1 - rw2);
                     return {
@@ -93,8 +95,49 @@
                     }
                 }
 
+                getTangentialVector() {
+                    return {
+                        x: this.getNormalVector().y,
+                        y: -this.getNormalVector().x
+                    }
+                }
+
                 getCollocationPoint() {
                     return new Point((this.p1.x + this.p2.x) / 2, (this.p1.y + this.p2.y) / 2, false);
+                }
+
+                length() {
+                    let dx = this.p2.x - this.p1.x;
+                    let dy = this.p2.y - this.p1.y;
+                    let l = Math.sqrt(dx*dx + dy*dy);
+                    return l;
+                }
+            }
+
+            class DoubletConstant2DWake {
+                constructor(point1) {
+                    this.p1 = point1;
+                }
+
+                transformToElementCoordinates(point) {
+                    let dx = point.x - this.p1.x;
+                    let dy = point.y - this.p1.y;
+                    let R = Math.sqrt(dx*dx + dy*dy);
+                    let theta = Math.atan2(dy, dx);
+
+                    return new Point(R, theta, true);
+                }
+
+                getInducedVelocityAt(point) {
+                    let p = this.transformToElementCoordinates(point);
+                    let ru1 = p.y / (p.x*p.x + p.y*p.y);
+                    let rw1 = p.x / (p.x*p.x + p.y*p.y);
+                    let u = -1 / (2 * Math.PI) * ru1;
+                    let w = 1 / (2 * Math.PI) * rw1;
+                    return {
+                        u: u,
+                        w: w
+                    }
                 }
             }
 
@@ -110,7 +153,8 @@
                 w: airspeed * Math.sin(alpha * Math.PI / 180)
             }
             
-            var numberOfElements = 100;
+            var halfNumberOfElements = 10;
+            var numberOfElements = 2 * halfNumberOfElements;
             var points = [];
             var elements = [];
             for(let i = 0; i <= numberOfElements; i++) {
@@ -120,7 +164,7 @@
                 let x2 = Math.pow(x, 2);
                 let x3 = Math.pow(x, 3);
                 let x4 = Math.pow(x, 4);
-                let y = (i > 50 ? -1 : 1) * 5 * 0.12 * (0.2969 * sqrx - 0.1260 * x - 0.3516 * x2 + 0.2843 * x3 - 0.1015 * x4);
+                let y = (i > halfNumberOfElements ? -1 : 1) * 5 * 0.12 * (0.2969 * sqrx - 0.1260 * x - 0.3516 * x2 + 0.2843 * x3 - 0.1015 * x4);
                 let thisPoint = new Point(x, y);
                 points.push(thisPoint);
                 if(i >= 1) {
@@ -129,6 +173,8 @@
                 }
                 canvas2D.lineTo(5 + 1000 * x, 155 - 1000 * y);
             }
+            var wakeElement = new DoubletConstant2DWake(points[0]);
+
             canvas2D.stroke();
             for(let element of elements) {
                 let controlPoint = element.getCollocationPoint();
@@ -137,61 +183,88 @@
                 canvas2D.strokeStyle = "blue";
                 canvas2D.stroke();
             }
-            // document.getElementById("#pts").innerHTML = JSON.stringify(points);
-            // document.getElementById("#elem").innerHTML = JSON.stringify(elements);
 
             var influenceElement = document.getElementById("infl");
 
             var lab = new Lalolab("mylab",false,"./");
-            lab.do("X = rand(5,5)");
-            lab.do("X.toArray()", res => {
-                influenceElement.innerHTML = JSON.stringify(res).replace(/\],\[/g, "],<br>[");
-            });
 
             lab.do(`A = zeros(${numberOfElements+1},${numberOfElements+1})`);
-            lab.do("A.toArray()", res => {
-                // influenceElement.innerHTML = JSON.stringify(res).replace(/\],\[/g, "],<br>[");
-                influenceElement.innerHTML = "Converted to Array"
-            });
             for(let from = 0; from < numberOfElements; from++) {
                 for(let to = 0; to < numberOfElements; to++) {
                     let fromElement = elements[from];
                     let toElement = elements[to];
                     let inducedVelocity = fromElement.getInducedVelocityAt(toElement.getCollocationPoint());
-                    // console.log("Induced velocity: " + JSON.stringify(inducedVelocity));
-                    // console.log("Normal vector: " + JSON.stringify(toElement.getNormalVector()));
                     let influence = inducedVelocity.u * toElement.getNormalVector().x + inducedVelocity.w * toElement.getNormalVector().y;
-                    // console.log(influence);
                     lab.do(`A[${to},${from}] = ${influence}`);
                 }
+                let wakeToElement = elements[from];
+                let inducedVelocity = wakeElement.getInducedVelocityAt(wakeToElement.getCollocationPoint());
+                let influence = inducedVelocity.u * wakeToElement.getNormalVector().x + inducedVelocity.w * wakeToElement.getNormalVector().y;
+                lab.do(`A[${from},${numberOfElements}] = ${influence}`);
             }
             lab.do(`A[${numberOfElements},0] = 1.0`);
             lab.do(`A[${numberOfElements},${numberOfElements}-1] = -1.0`);
             lab.do(`A[${numberOfElements},${numberOfElements}] = 1.0`);
-            lab.do("A.toArray()", res => {
-                // influenceElement.innerHTML = JSON.stringify(res).replace(/\],\[/g, "],<br>[");
-                influenceElement.innerHTML = "Influence matrix calculated";
-            });
 
             lab.do(`R = zeros(${numberOfElements}+1)`);
             for(let i = 0; i < numberOfElements; i++) {
                 let element = elements[i];
                 let localFreeStreamComponent = -(freeStream.u * element.getNormalVector().x + freeStream.w * element.getNormalVector().y);
-                // console.log(localFreeStreamComponent);
                 lab.do(`R[${i}] = ${localFreeStreamComponent}`);
             }
 
-            // lab.do("R.toArray()", res => {
-            //     influenceElement.innerHTML = "Right hand side calculated";
-            // });
-
-            lab.do("Mu = A \ R", res => {
+            lab.do("Mu = solve(A, R)", res => {
                 influenceElement.innerHTML = "System solved, doublet strengths calculated";
             });
 
-            lab.do("Mu.toArray()", res => {
-                influenceElement.innerHTML = JSON.stringify(res).replace(/\],\[/g, "],<br>[");
-                // influenceElement.innerHTML = "Influence matrix calculated";
+            var doubletStrengths = [];
+            for(let i = 0; i < numberOfElements+1; i++) {
+                lab.do(`mu = Mu[${i}]`, mu => {
+                    doubletStrengths.push(mu);
+                });
+            }
+
+            lab.do(``, () => {
+                var wakeDoubletStrength = doubletStrengths.pop();
+
+                var inducedTangentialVelocities = [];
+                for(let to = 0; to < numberOfElements; to++) {
+                    let inducedTangentialVelocity = 0.0;
+                    for(let from = 0; from < numberOfElements; from++) {
+                        let inducedVelocity = elements[from].getInducedVelocityAt(elements[to].getCollocationPoint());
+                        let tangentialComponent = inducedVelocity.u * elements[to].getTangentialVector().x + inducedVelocity.w * elements[to].getTangentialVector().y;
+                        inducedTangentialVelocity += doubletStrengths[from] * tangentialComponent;
+                    }
+                    let inducedVelocity = wakeElement.getInducedVelocityAt(elements[to].getCollocationPoint());
+                    let tangentialComponent = inducedVelocity.u * elements[to].getTangentialVector().x + inducedVelocity.w * elements[to].getTangentialVector().y;
+                    inducedTangentialVelocity += wakeDoubletStrength * tangentialComponent;
+                    inducedTangentialVelocities.push(inducedTangentialVelocity);
+                }
+                var pressureCoefficients = [];
+                for(let i = 0; i < numberOfElements; i++) {
+                    let freeStreamTangentialComponent = freeStream.u * elements[i].getTangentialVector().x + freeStream.w * elements[i].getTangentialVector().y;
+                    let totalTangentialComponent = freeStreamTangentialComponent + inducedTangentialVelocities[i];
+                    let cp = 1 - totalTangentialComponent*totalTangentialComponent;
+                    pressureCoefficients.push(cp);
+                }
+                console.log(JSON.stringify(pressureCoefficients));
+
+                var lift = 0.0;
+                for(let i = 0; i < numberOfElements; i++) {
+                    lift += pressureCoefficients[i] * elements[i].length() * elements[i].getNormalVector().y;
+                }
+                console.log(`Total lift ${lift}`);
+
+                canvas = document.getElementById("#cpplot");
+                canvas2D = canvas.getContext("2d");
+                canvas2D.stroke();
+                for(let i = 0; i < numberOfElements; i++) {
+                    let controlPoint = elements[i].getCollocationPoint();
+                    canvas2D.beginPath();
+                    canvas2D.arc(5 + controlPoint.x * 1000, 338 - pressureCoefficients[i] * 333, 4, 0, 2 * Math.PI);
+                    canvas2D.strokeStyle = "blue";
+                    canvas2D.stroke();
+                }            
             });
         </script>
     </body>
