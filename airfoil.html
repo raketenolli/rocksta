@@ -51,18 +51,33 @@
                 constructor(point1, point2) {
                     this.p1 = point1;
                     this.p2 = point2;
+                    let dx = point2.x - point1.x;
+                    let dy = point2.y - point1.y;
+                    let d = Math.sqrt(dx*dx + dy*dy);
+                    this.x_axis = new Point(dx/d, dy/d);
+                    this.y_axis = new Point(-dy/d, dx/d);
+                    // console.log(`element constructed`);
+                    // console.log(`x axis: ${JSON.stringify(this.x_axis)}`);
+                    // console.log(`y axis: ${JSON.stringify(this.y_axis)}`);
+                    this.l = d;
                 }
 
-                transformToElementCoordinates(point) {
-                    let dx = point.x - this.p1.x;
-                    let dy = point.y - this.p1.y;
-                    let R = Math.sqrt(dx*dx + dy*dy);
-                    let theta = Math.atan2(dy, dx);
+                transformToElementCoordinates(point, directionOnly = false) {
+                    let dx = point.x - (directionOnly ? 0 : this.p1.x);
+                    let dy = point.y - (directionOnly ? 0 : this.p1.y);
+                    let x = dx*this.x_axis.x + dy*this.x_axis.y;
+                    let y = dx*this.y_axis.x + dy*this.y_axis.y;
+                    return new Point(x, y);
+                }
 
-                    return new Point(R, theta, true);
+                transformToWorldCoordinates(point, directionOnly = false) {
+                    let x = (directionOnly ? 0 : this.p1.x) + point.x*this.x_axis.x + point.y*this.y_axis.x;
+                    let y = (directionOnly ? 0 : this.p1.y) + point.x*this.x_axis.y + point.y*this.y_axis.y;
+                    return new Point(x, y);
                 }
 
                 getInducedPotentialAt(point) {
+                    // this function might be very wrong!
                     let pointInLocal = this.transformToElementCoordinates(point);
                     let atan2AtPoint1 = Math.atan2(pointInLocal.z, pointInLocal.x - this.point1.x);
                     let atan2AtPoint2 = Math.atan2(pointInLocal.z, pointInLocal.x - this.point2.x);
@@ -73,59 +88,60 @@
                     let p = this.transformToElementCoordinates(point);
                     let p1 = this.transformToElementCoordinates(this.p1);
                     let p2 = this.transformToElementCoordinates(this.p2);
+                    // console.log(`transformed points`);
+                    // console.log(`p: ${JSON.stringify(p)}`);
+                    // console.log(`p1: ${JSON.stringify(p1)}`);
+                    // console.log(`p2: ${JSON.stringify(p2)}`);
                     let ru1 = p.y / ((p.x-p1.x)*(p.x-p1.x) + p.y*p.y);
                     let ru2 = p.y / ((p.x-p2.x)*(p.x-p2.x) + p.y*p.y);
                     let rw1 = (p.x - p1.x) / ((p.x-p1.x)*(p.x-p1.x) + p.y*p.y);
                     let rw2 = (p.x - p2.x) / ((p.x-p2.x)*(p.x-p2.x) + p.y*p.y);
                     let u = -1 / (2 * Math.PI) * (ru1 - ru2);
                     let w = 1 / (2 * Math.PI) * (rw1 - rw2);
+                    // console.log(`(u, w) in element coordinates: (${u}, ${w})`);
+                    let uw = this.transformToWorldCoordinates(new Point(u, w), true);
                     return {
-                        u: u,
-                        w: w
+                        u: uw.x,
+                        w: uw.y
                     }
                 }
 
                 getNormalVector() {
-                    let dx = this.p2.x - this.p1.x;
-                    let dy = this.p2.y - this.p1.y;
-                    let l = Math.sqrt(dx*dx + dy*dy);
-                    return {
-                        x: dy / l,
-                        y : -dx / l
-                    }
+                    return this.y_axis;
                 }
 
                 getTangentialVector() {
-                    return {
-                        x: this.getNormalVector().y,
-                        y: -this.getNormalVector().x
-                    }
+                    return this.x_axis;
                 }
 
                 getCollocationPoint() {
-                    return new Point((this.p1.x + this.p2.x) / 2, (this.p1.y + this.p2.y) / 2, false);
+                    return new Point((this.p1.x + this.p2.x) / 2, (this.p1.y + this.p2.y) / 2);
                 }
 
                 length() {
-                    let dx = this.p2.x - this.p1.x;
-                    let dy = this.p2.y - this.p1.y;
-                    let l = Math.sqrt(dx*dx + dy*dy);
-                    return l;
+                    return this.l;
                 }
             }
 
             class DoubletConstant2DWake {
                 constructor(point1) {
                     this.p1 = point1;
+                    this.x_axis = new Point(1, 0);
+                    this.y_axis = new Point(0, 1);
                 }
 
-                transformToElementCoordinates(point) {
-                    let dx = point.x - this.p1.x;
-                    let dy = point.y - this.p1.y;
-                    let R = Math.sqrt(dx*dx + dy*dy);
-                    let theta = Math.atan2(dy, dx);
+                transformToElementCoordinates(point, directionOnly = false) {
+                    let dx = point.x - (directionOnly ? 0 : this.p1.x);
+                    let dy = point.y - (directionOnly ? 0 : this.p1.y);
+                    let x = dx*this.x_axis.x + dy*this.x_axis.y;
+                    let y = dx*this.y_axis.x + dy*this.y_axis.y;
+                    return new Point(x, y);
+                }
 
-                    return new Point(R, theta, true);
+                transformToWorldCoordinates(point, directionOnly = false) {
+                    let x = (directionOnly ? 0 : this.p1.x) + point.x*this.x_axis.x + point.y*this.y_axis.x;
+                    let y = (directionOnly ? 0 : this.p1.y) + point.x*this.x_axis.y + point.y*this.y_axis.y;
+                    return new Point(x, y);
                 }
 
                 getInducedVelocityAt(point) {
@@ -134,9 +150,10 @@
                     let rw1 = p.x / (p.x*p.x + p.y*p.y);
                     let u = -1 / (2 * Math.PI) * ru1;
                     let w = 1 / (2 * Math.PI) * rw1;
+                    let uw = this.transformToWorldCoordinates(new Point(u, w), true);
                     return {
-                        u: u,
-                        w: w
+                        u: uw.x,
+                        w: uw.y
                     }
                 }
             }
@@ -152,8 +169,9 @@
                 u: airspeed * Math.cos(alpha * Math.PI / 180),
                 w: airspeed * Math.sin(alpha * Math.PI / 180)
             }
+            console.log(`free stream ${JSON.stringify(freeStream)}`);
             
-            var halfNumberOfElements = 10;
+            var halfNumberOfElements = 20;
             var numberOfElements = 2 * halfNumberOfElements;
             var points = [];
             var elements = [];
@@ -164,7 +182,7 @@
                 let x2 = Math.pow(x, 2);
                 let x3 = Math.pow(x, 3);
                 let x4 = Math.pow(x, 4);
-                let y = (i > halfNumberOfElements ? -1 : 1) * 5 * 0.12 * (0.2969 * sqrx - 0.1260 * x - 0.3516 * x2 + 0.2843 * x3 - 0.1015 * x4);
+                let y = (i < halfNumberOfElements ? -1 : 1) * 5 * 0.12 * (0.2969 * sqrx - 0.1260 * x - 0.3516 * x2 + 0.2843 * x3 - 0.1015 * x4);
                 let thisPoint = new Point(x, y);
                 points.push(thisPoint);
                 if(i >= 1) {
@@ -174,6 +192,9 @@
                 canvas2D.lineTo(5 + 1000 * x, 155 - 1000 * y);
             }
             var wakeElement = new DoubletConstant2DWake(points[0]);
+            for(let i in elements) {
+                console.log(`element ${i} from ${JSON.stringify(elements[i].p1)} to ${JSON.stringify(elements[i].p2)} with length ${elements[i].l} normal vector ${JSON.stringify(elements[i].getNormalVector())}`);
+            }
 
             canvas2D.stroke();
             for(let element of elements) {
@@ -189,28 +210,56 @@
             var lab = new Lalolab("mylab",false,"./");
 
             lab.do(`A = zeros(${numberOfElements+1},${numberOfElements+1})`);
-            for(let from = 0; from < numberOfElements; from++) {
-                for(let to = 0; to < numberOfElements; to++) {
+            for(let to = 0; to < numberOfElements; to++) {
+                for(let from = 0; from < numberOfElements; from++) {
                     let fromElement = elements[from];
                     let toElement = elements[to];
                     let inducedVelocity = fromElement.getInducedVelocityAt(toElement.getCollocationPoint());
                     let influence = inducedVelocity.u * toElement.getNormalVector().x + inducedVelocity.w * toElement.getNormalVector().y;
+                    console.log(`influence from ${from} to ${to}: (${inducedVelocity.u}, ${inducedVelocity.w}) . (${toElement.getNormalVector().x}, ${toElement.getNormalVector().y}) = ${influence}`);
                     lab.do(`A[${to},${from}] = ${influence}`);
                 }
-                let wakeToElement = elements[from];
+                let wakeToElement = elements[to];
                 let inducedVelocity = wakeElement.getInducedVelocityAt(wakeToElement.getCollocationPoint());
                 let influence = inducedVelocity.u * wakeToElement.getNormalVector().x + inducedVelocity.w * wakeToElement.getNormalVector().y;
-                lab.do(`A[${from},${numberOfElements}] = ${influence}`);
+                lab.do(`A[${to},${numberOfElements}] = ${influence}`);
             }
             lab.do(`A[${numberOfElements},0] = 1.0`);
             lab.do(`A[${numberOfElements},${numberOfElements}-1] = -1.0`);
             lab.do(`A[${numberOfElements},${numberOfElements}] = 1.0`);
+            lab.do(`A.toArray()`, A => {
+                console.log(JSON.stringify(A));
+            });
 
+            var localFreeStreamComponents = [];
             lab.do(`R = zeros(${numberOfElements}+1)`);
             for(let i = 0; i < numberOfElements; i++) {
                 let element = elements[i];
                 let localFreeStreamComponent = -(freeStream.u * element.getNormalVector().x + freeStream.w * element.getNormalVector().y);
+                console.log(`element ${i} negative local free stream normal component ${localFreeStreamComponent}`);
+                localFreeStreamComponents.push(localFreeStreamComponent);
                 lab.do(`R[${i}] = ${localFreeStreamComponent}`);
+            }
+            console.log(JSON.stringify(localFreeStreamComponents));
+
+            for(let i in elements) {
+                let x1 = 5 + 1000 * elements[i].getCollocationPoint().x;
+                let y1 = 155 - 1000 * elements[i].getCollocationPoint().y;
+                canvas2D.beginPath();
+                canvas2D.moveTo(x1, y1);
+                let x2 = x1 + 100 * freeStream.u;
+                let y2 = y1 - 100 * freeStream.w;
+                canvas2D.lineTo(x2, y2);
+                canvas2D.strokeStyle = "red";
+                canvas2D.stroke();
+
+                canvas2D.beginPath();
+                canvas2D.moveTo(x1, y1);
+                let x3 = x1 + 100 * localFreeStreamComponents[i] * elements[i].getNormalVector().x;
+                let y3 = y1 - 100 * localFreeStreamComponents[i] * elements[i].getNormalVector().y;
+                canvas2D.lineTo(x3, y3);
+                canvas2D.strokeStyle = "blue";
+                canvas2D.stroke();
             }
 
             lab.do("Mu = solve(A, R)", res => {
@@ -220,26 +269,33 @@
             var doubletStrengths = [];
             for(let i = 0; i < numberOfElements+1; i++) {
                 lab.do(`mu = Mu[${i}]`, mu => {
+                    console.log(`Doublet strength element ${i}: ${mu}`);
                     doubletStrengths.push(mu);
                 });
             }
 
             lab.do(``, () => {
                 var wakeDoubletStrength = doubletStrengths.pop();
+                console.log(`Doublet strengths: ${JSON.stringify(doubletStrengths)}`);
+                console.log(`Wake strength: ${wakeDoubletStrength}`);
 
                 var inducedTangentialVelocities = [];
                 for(let to = 0; to < numberOfElements; to++) {
-                    let inducedTangentialVelocity = 0.0;
+                    let totalInducedTangentialVelocity = 0.0;
                     for(let from = 0; from < numberOfElements; from++) {
                         let inducedVelocity = elements[from].getInducedVelocityAt(elements[to].getCollocationPoint());
                         let tangentialComponent = inducedVelocity.u * elements[to].getTangentialVector().x + inducedVelocity.w * elements[to].getTangentialVector().y;
-                        inducedTangentialVelocity += doubletStrengths[from] * tangentialComponent;
+                        let inducedTangentialVelocity = doubletStrengths[from] * tangentialComponent;
+                        console.log(`Induced veclocity from ${from} to ${to}: ${inducedTangentialVelocity}`);
+                        totalInducedTangentialVelocity = totalInducedTangentialVelocity + inducedTangentialVelocity;
                     }
                     let inducedVelocity = wakeElement.getInducedVelocityAt(elements[to].getCollocationPoint());
                     let tangentialComponent = inducedVelocity.u * elements[to].getTangentialVector().x + inducedVelocity.w * elements[to].getTangentialVector().y;
-                    inducedTangentialVelocity += wakeDoubletStrength * tangentialComponent;
-                    inducedTangentialVelocities.push(inducedTangentialVelocity);
+                    let inducedTangentialVelocity = wakeDoubletStrength * tangentialComponent;
+                    totalInducedTangentialVelocity = totalInducedTangentialVelocity + inducedTangentialVelocity;
+                    inducedTangentialVelocities.push(totalInducedTangentialVelocity);
                 }
+                console.log(`Tangential velocities: ${JSON.stringify(inducedTangentialVelocities)}`);
                 var pressureCoefficients = [];
                 for(let i = 0; i < numberOfElements; i++) {
                     let freeStreamTangentialComponent = freeStream.u * elements[i].getTangentialVector().x + freeStream.w * elements[i].getTangentialVector().y;
