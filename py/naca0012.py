@@ -44,6 +44,23 @@ print(doublet_strengths)
 
 (fig, ax) = naca0012.plot("p", "e")
 for i in range(number_of_elements):
-    ax.arrow(midpoints[i, 0], midpoints[i, 1], doublet_strengths[i] * normals[i, 0], doublet_strengths[i] * normals[i, 1])
+    ax.arrow(midpoints[i, 0], midpoints[i, 1], 0.1 * right_hand_side_vector[i] * normals[i, 0], 0.1 * right_hand_side_vector[i] * normals[i, 1], length_includes_head=True)
+    ax.arrow(midpoints[i, 0] + 0.1 * right_hand_side_vector[i] * normals[i, 0], midpoints[i, 1] + 0.1 * right_hand_side_vector[i] * normals[i, 1], 0.1 * relative_wind_vector[0], 0.1 * relative_wind_vector[1], color="green", length_includes_head=True)
+
+local_velocities = np.zeros((number_of_elements, 2))
+for i in range(number_of_elements):
+    local_velocities[i, :] = relative_wind_vector
+    for j in range(number_of_elements):
+        # influence of element j onto element i
+        v = doublet_strengths[j] * induced_velocity_world(midpoints[i], points[j, 0], points[j, 1])
+        local_velocities[i, :] += v
+    # influence of wake element onto element i
+    v = doublet_strengths[number_of_elements] * induced_velocity_world(midpoints[i], wake[0], wake[1])
+    local_velocities[i, :] += v
+print(local_velocities)
+
+for i in range(number_of_elements):
+    ax.arrow(midpoints[i, 0], midpoints[i, 1], 0.1 * local_velocities[i, 0], 0.1 * local_velocities[i, 1], color="red", length_includes_head=True)
+
 fig.show()
 input()
