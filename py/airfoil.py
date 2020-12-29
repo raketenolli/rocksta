@@ -17,6 +17,7 @@ class NACA00xx:
         for i in range(number_of_elements):
             self._elements[i, 0] = i
             self._elements[i, 1] = i + 1
+        self._wake_element = np.array([[1.0, 0.0], [10000.0, 0.0]])
 
     def points(self):
         return self._points
@@ -33,12 +34,16 @@ class NACA00xx:
     def element_normals(self):
         return np.array([normal(element_ends[1] - element_ends[0]) for element_ends in self.element_points()])
 
+    def wake_element(self):
+        return self._wake_element
+
     def plot(self, *args):
-        plt.figure()
-        plt.axes().set_aspect('equal')
+        fig = plt.figure()
+        ax = fig.add_subplot()
+        ax.set_aspect('equal')
         if "p" in args or "points" in args:
-            plt.scatter(self._points[:, 0], self._points[:, 1])
+            ax.scatter(self._points[:, 0], self._points[:, 1])
         if "e" in args or "elements" in args:
             points = self.element_points().reshape((-1, 2))
-            plt.plot(points[:, 0], points[:, 1])
-        plt.show()
+            ax.plot(points[:, 0], points[:, 1])
+        return (fig, ax)
