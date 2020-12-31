@@ -11,7 +11,10 @@ midpoints = naca0012.element_midpoints()
 normals = naca0012.element_normals()
 wake = naca0012.wake_element()
 
-angle_of_attack = 1 # degree
+print("points:", points)
+print("midpoints:", midpoints)
+
+angle_of_attack = 5 # degree
 relative_wind_vector = np.array([cos(angle_of_attack * pi / 180.0), sin(angle_of_attack * pi / 180.0)])
 print('relative wind:', relative_wind_vector)
 
@@ -43,20 +46,27 @@ doublet_strengths = np.linalg.solve(influence_matrix, right_hand_side_vector)
 print(doublet_strengths)
 
 (fig, ax) = naca0012.plot("p", "e")
-for i in range(number_of_elements):
-    ax.arrow(midpoints[i, 0], midpoints[i, 1], 0.1 * right_hand_side_vector[i] * normals[i, 0], 0.1 * right_hand_side_vector[i] * normals[i, 1], length_includes_head=True)
-    ax.arrow(midpoints[i, 0] + 0.1 * right_hand_side_vector[i] * normals[i, 0], midpoints[i, 1] + 0.1 * right_hand_side_vector[i] * normals[i, 1], 0.1 * relative_wind_vector[0], 0.1 * relative_wind_vector[1], color="green", length_includes_head=True)
+# for i in range(number_of_elements):
+    # ax.arrow(midpoints[i, 0], midpoints[i, 1], 0.1 * doublet_strengths[i] * normals[i, 0], 0.1 * doublet_strengths[i] * normals[i, 1], length_includes_head=True)
+    # ax.arrow(midpoints[i, 0], midpoints[i, 1], 0.1 * right_hand_side_vector[i] * normals[i, 0], 0.1 * right_hand_side_vector[i] * normals[i, 1], length_includes_head=True)
+    # ax.arrow(midpoints[i, 0] + 0.1 * right_hand_side_vector[i] * normals[i, 0], midpoints[i, 1] + 0.1 * right_hand_side_vector[i] * normals[i, 1], 0.1 * relative_wind_vector[0], 0.1 * relative_wind_vector[1], color="green", length_includes_head=True)
 
 local_velocities = np.zeros((number_of_elements, 2))
+print_values = False
 for i in range(number_of_elements):
+    if i == number_of_elements - 1:
+        print_values = True
     local_velocities[i, :] = relative_wind_vector
+    if print_values: print(local_velocities[i, :])
     for j in range(number_of_elements):
         # influence of element j onto element i
         v = doublet_strengths[j] * induced_velocity_world(midpoints[i], points[j, 0], points[j, 1])
         local_velocities[i, :] += v
-    # influence of wake element onto element i
+        if print_values: print("element", j, "influence:", v, local_velocities[i, :])
+    # # influence of wake element onto element i
     v = doublet_strengths[number_of_elements] * induced_velocity_world(midpoints[i], wake[0], wake[1])
     local_velocities[i, :] += v
+    if print_values: print("wake influence:", v, local_velocities[i, :])
 print(local_velocities)
 
 for i in range(number_of_elements):

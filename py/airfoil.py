@@ -11,7 +11,8 @@ class NACA00xx:
             theta = pi * i / number_of_elements
             x = cos(theta)**2.0
             self._points[i, 0] = x
-            y = (-1 if i < half_number_of_elements else 1) * 5 * thickness * (0.2969 * sqrt(x) - 0.1260 * x - 0.3516 * x**2.0 + 0.2843 * x**3.0 - 0.1015 * x**4.0)
+            y = (-1 if i < half_number_of_elements else 1) * 5 * thickness * (0.2969 * sqrt(x) - 0.1260 * x - 0.3516 * x**2.0 + 0.2843 * x**3.0 - 0.1015 * x**4.0) # finite thickness trailing edge
+            # y = (-1 if i < half_number_of_elements else 1) * 5 * thickness * (0.2969 * sqrt(x) - 0.1260 * x - 0.3516 * x**2.0 + 0.2843 * x**3.0 - 0.103599 * x**4.0) # near zero thickness trailing edge
             self._points[i, 1] = y
         self._elements = np.zeros((number_of_elements, 2), dtype=np.int)
         for i in range(number_of_elements):
