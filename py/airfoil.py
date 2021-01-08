@@ -18,7 +18,7 @@ class NACA00xx:
         for i in range(number_of_elements):
             self._elements[i, 0] = i
             self._elements[i, 1] = i + 1
-        self._wake_element = np.array([[1.0, 0.0], [10000.0, 0.0]])
+        self._wake_element = np.array([[1.0, 0.0], [1.0e15, 0.0]])
 
     def points(self):
         return self._points
@@ -34,6 +34,9 @@ class NACA00xx:
     
     def element_normals(self):
         return np.array([normal(element_ends[1] - element_ends[0]) for element_ends in self.element_points()])
+    
+    def element_tangents(self):
+        return np.array([tangent(element_ends[1] - element_ends[0]) for element_ends in self.element_points()])
 
     def wake_element(self):
         return self._wake_element
