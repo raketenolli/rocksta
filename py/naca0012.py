@@ -1,10 +1,14 @@
 import numpy as np
+import copy
 import airfoil
 from element_operations import *
-from math import sin, cos, pi
+from math import sin, cos, pi, atan2
+import matplotlib
 import matplotlib.pyplot as plt
 
-number_of_elements = 100
+matplotlib.use("Agg")
+
+number_of_elements = 160
 naca0012 = airfoil.NACA00xx(0.12, number_of_elements)
 
 points = naca0012.element_points()
@@ -15,8 +19,10 @@ wake = naca0012.wake_element()
 
 print("points:", points)
 print("midpoints:", midpoints)
+print("normals:", normals)
+print("tangents:", tangents)
 
-angle_of_attack = 5 # degree
+angle_of_attack = 0 # degree
 relative_wind_vector = np.array([cos(angle_of_attack * pi / 180.0), sin(angle_of_attack * pi / 180.0)])
 print('relative wind:', relative_wind_vector)
 
@@ -54,33 +60,47 @@ print('relative wind:', relative_wind_vector)
 ### CONSTANT VORTEX
 
 influence_matrix = np.zeros((number_of_elements, number_of_elements))
-for i in range(number_of_elements - 1):
+influence_matrix_normals = np.zeros((number_of_elements, number_of_elements))
+for i in range(number_of_elements):
     for j in range(number_of_elements):
         # influence of element j onto element i
-        if i != j:
+        if i == j:
+            influence_matrix[i, j] = -0.5
+            influence_matrix_normals[i, j] = 0.0
+        else:
             v = vortex_induced_velocity_world(midpoints[i], points[j, 0], points[j, 1])
+            n = normals[i]
             t = tangents[i]
             influence_matrix[i, j] = np.dot(v, t)
-        else:
-            influence_matrix[i, j] = -1.0 / 2.0
+            influence_matrix_normals[i, j] = np.dot(v, n)
 
-influence_matrix[number_of_elements - 1, 0] = 1.0
-influence_matrix[number_of_elements -1, number_of_elements - 1] = 1.0
+matrix_to_solve = copy.deepcopy(influence_matrix[:, :])
+matrix_to_solve[number_of_elements - 1, :] = 0.0
+matrix_to_solve[number_of_elements - 1, 0] = 1.0
+matrix_to_solve[number_of_elements -1, number_of_elements - 1] = 1.0
 
-print("Influence matrix:", influence_matrix)
+np.set_printoptions(precision=3, suppress=True)
+print("Influence matrix to solve:")
+print(matrix_to_solve)
 
 right_hand_side_vector = np.zeros((number_of_elements))
+RHS_normal = np.zeros((number_of_elements))
 for i in range(number_of_elements - 1):
     right_hand_side_vector[i] = -1.0 * np.dot(relative_wind_vector, tangents[i])
+    RHS_normal[i] = -1.0 * np.dot(relative_wind_vector, normals[i])
 print("Right hand side vector:", right_hand_side_vector)
+print("RHS normal:", RHS_normal)
 
-vortex_strengths = np.linalg.solve(influence_matrix, right_hand_side_vector)
+vortex_strengths = np.linalg.solve(matrix_to_solve, right_hand_side_vector)
 print("Vortex strengths:", vortex_strengths)
+
+print("Multiplication of influence matrix with vortex strengths yields:")
+print(np.matmul(influence_matrix, vortex_strengths))
 
 ###
 
 (fig, ax) = naca0012.plot("p", "e")
-ax.arrow(0, 0, 0.1 * relative_wind_vector[0], 0.1 * relative_wind_vector[1], length_includes_head=True, color="green", width=0.003)
+#ax.arrow(0, 0, 0.1 * relative_wind_vector[0], 0.1 * relative_wind_vector[1], length_includes_head=True, color="green", width=0.001)
 for i in range(number_of_elements):
     # FOR DOUBLETS
     # ax.arrow(midpoints[i, 0], midpoints[i, 1], 0.1 * doublet_strengths[i] * normals[i, 0], 0.1 * doublet_strengths[i] * normals[i, 1], length_includes_head=True)
@@ -88,9 +108,21 @@ for i in range(number_of_elements):
     # ax.arrow(midpoints[i, 0] + 0.1 * right_hand_side_vector[i] * normals[i, 0], midpoints[i, 1] + 0.1 * right_hand_side_vector[i] * normals[i, 1], 0.1 * relative_wind_vector[0], 0.1 * relative_wind_vector[1], color="green", length_includes_head=True)
 
     # FOR VORTICES
-    ax.arrow(midpoints[i, 0], midpoints[i, 1], 0.1 * vortex_strengths[i] * normals[i, 0], 0.1 * vortex_strengths[i] * normals[i, 1], length_includes_head=True, color="blue")
-    ax.arrow(midpoints[i, 0], midpoints[i, 1], 0.1 * right_hand_side_vector[i] * tangents[i, 0], 0.1 * right_hand_side_vector[i] * tangents[i, 1], length_includes_head=True)
+    #ax.arrow(midpoints[i, 0], midpoints[i, 1], 0.1 * vortex_strengths[i] * normals[i, 0], 0.1 * vortex_strengths[i] * normals[i, 1], length_includes_head=True, color="blue", width=0.001)
+    #ax.arrow(midpoints[i, 0], midpoints[i, 1], 0.1 * right_hand_side_vector[i] * tangents[i, 0], 0.1 * right_hand_side_vector[i] * tangents[i, 1], length_includes_head=True,  color="red", width=0.001)
+    ax.arrow(midpoints[i, 0], midpoints[i, 1], 0.3 * right_hand_side_vector[i] * tangents[i, 0], 0.3 * right_hand_side_vector[i] * tangents[i, 1], length_includes_head=True,  color="red", width=0.001)
+    ax.arrow(midpoints[i, 0] + 0.3 * right_hand_side_vector[i] * tangents[i, 0], midpoints[i, 1] + 0.3 * right_hand_side_vector[i] * tangents[i, 1], 0.3 * relative_wind_vector[0], 0.3 * relative_wind_vector[1], length_includes_head=True,  color="green", width=0.001)
 
+#for i in range(number_of_elements):
+#    print("Influence by panel", i)
+#    print(influence_matrix[:, i])
+#    (figi, axi) = naca0012.plot("p", "e")
+#    for j in range(number_of_elements):
+#        if i != j:
+#            ##axi.arrow(midpoints[j, 0], midpoints[j, 1], influence_matrix[j, i] * normals[j, 0], influence_matrix[j, i] * normals[j, 1], length_includes_head=True, color="red", width=0.001)
+#            ##axi.arrow(midpoints[j, 0], midpoints[j, 1], influence_matrix_tangential[j, i] * tangents[j, 0], influence_matrix_tangential[j, i] * tangents[j, 1], length_includes_head=True, color="blue", width=0.001)
+#            axi.arrow(midpoints[j, 0], midpoints[j, 1], influence_matrix_normals[j, i] * normals[j, 0] + influence_matrix[j, i] * tangents[j, 0], influence_matrix_normals[j, i] * normals[j, 1] + influence_matrix[j, i] * tangents[j, 1], length_includes_head=True, color="green", width=0.001)
+#    figi.savefig("naca0012_influence" + str(i) + ".png", dpi=150)
 
 ### CONSTANT DOUBLET
 
@@ -120,39 +152,60 @@ for i in range(number_of_elements):
 local_velocities = np.zeros((number_of_elements, 2))
 print_values = False
 for i in range(number_of_elements):
-    if i == 61:
-        print_values = True
-    local_velocities[i, :] = relative_wind_vector
+#    if i == 61:
+#        print_values = True
+#    local_velocities[i, :] = relative_wind_vector
+    local_velocities[i, :] = np.array([0.0, 0.0])
     if print_values: print(local_velocities[i, :])
     for j in range(number_of_elements):
         # influence of element j onto element i
-        if i != j:
-            v = vortex_strengths[j] * vortex_induced_velocity_world(midpoints[i], points[j, 0], points[j, 1])
-        else:
-            v = vortex_strengths[j] * convert_to_world_coordinates(np.array([0.5, 0]), naca0012.element_points()[i, 0, :], naca0012.element_points()[i, 1, :], "dir")
-        local_velocities[i, :] += v
+        # if i != j:
+        # v = vortex_strengths[j] * vortex_induced_velocity_world(midpoints[i], points[j, 0], points[j, 1])
+        # else:
+        #    v = vortex_strengths[j] * convert_to_world_coordinates(np.array([0.5, 0]), naca0012.element_points()[i, 0, :], naca0012.element_points()[i, 1, :], "dir")
+        #vn = vortex_strengths[j] * influence_matrix_normals[i, j] * normals[i]
+        vt = vortex_strengths[j] * influence_matrix[i, j] * tangents[i]
+        local_velocities[i, :] += vt
         if print_values: print("element", j, "influence:", v, local_velocities[i, :])
-    print_values = False
+#    print_values = False
 print(local_velocities)
+print(right_hand_side_vector)
+for i in range(number_of_elements):
+    print("ratio element points:", (points[i, 1, 1] - points[i, 0, 1])/(points[i, 1, 0] - points[i, 0, 0]), "local velocity:", local_velocities[i, 1]/local_velocities[i, 0])
 
 ###
 
+local_normal_velocities = np.zeros((number_of_elements, 2))
+for i in range(number_of_elements):
+    local_normal_velocities[i, :] = np.array([0.0, 0.0])
+    for j in range(number_of_elements):
+        vn = vortex_strengths[j] * influence_matrix_normals[i, j] * normals[i]
+        local_normal_velocities[i, :] += vn
+print("Influence matrix normal:")
+print(influence_matrix_normals)
+print("Local normal velocities:")
+print(local_normal_velocities)
+print("RHS normal:")
+print(RHS_normal)
 
 # for i in range(number_of_elements):
 #     ax.arrow(midpoints[i, 0], midpoints[i, 1], 0.1 * local_velocities[i, 0], 0.1 * local_velocities[i, 1], color="red", length_includes_head=True)
 
-fig.show()
+fig.savefig("naca0012_v.png", dpi=300)
 
 coefficients_of_pressure = np.zeros(number_of_elements)
 for i in range(number_of_elements):
-    coefficients_of_pressure[i] = 1.0 - (local_velocities[i, 0]**2.0 + local_velocities[i, 1]**2.0)
+    # coefficients_of_pressure[i] = 1.0 - (local_velocities[i, 0]**2.0 + local_velocities[i, 1]**2.0)
+    tangential_wind = np.dot(relative_wind_vector, tangents[i])
+    perturbation_velocity = vortex_strengths[i] / 2.0
+    local_velocity = tangential_wind + perturbation_velocity
+    coefficients_of_pressure[i] = 1.0 - local_velocity**2
+    print("el", i, "tan wind", tangential_wind, "pert vel", perturbation_velocity, "local vel", local_velocity, "cp", coefficients_of_pressure[i])
 
 cpfig = plt.figure()
 cpax = cpfig.add_subplot()
-print("element points shape:", naca0012.element_points().shape)
+print("element midpoints shape:", naca0012.element_midpoints().shape)
 print("coefficients of pressure shape:", coefficients_of_pressure.shape)
-cpax.scatter(naca0012.element_points()[:, 0, 0], coefficients_of_pressure)
+cpax.scatter(naca0012.element_midpoints()[:, 0], coefficients_of_pressure)
 cpax.invert_yaxis()
-cpfig.show()
-
-input()
+cpfig.savefig("naca0012_cp.png", dpi=300)

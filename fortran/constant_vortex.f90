@@ -1,0 +1,230 @@
+! SOURCE: KATZ, PLOTKIN – LOW-SPEED AERODYNAMICS, 2nd edition, 2001
+!
+! PROGRAM No. 5: CONSTANT STRENGTH VORTEX
+! ---------------------------------------
+!
+! THIS PROGRAM FINDS THE PRESSURE DISTRIBUTION ON AN ARBITRARY AIRFOIL
+! BY REPRESENTING THE SURFACE AS A FINITE NUMBER OF VORTEX PANELS WITH
+! CONST. STRENGTH (NEUMANN B.C., PROGRAM BY STEVEN YON, 1989).
+REAL EP(400,2),EPT(400,2),PT1(400,2),PT2(400,2)
+REAL CO(400,2),A(400,400),B(400,400),G(400)
+REAL VEL(400),VELT(400),TH(400),DL(400)
+OPEN(8,FILE='CPV.DAT',STATUS='NEW')
+OPEN(9,FILE='naca0012.dat',STATUS='OLD')
+WRITE(6,*) 'ENTER NUMBER OF PANELS'
+READ(5,*) M
+N=M+1
+WRITE(6,*) 'ENTER ANGLE OF ATTACK IN DEGREES'
+READ(5,*) ALPHA
+AL=ALPHA/57.2958
+
+! READ IN THE PANEL END POINTS
+
+DO I=1,M+1
+    READ(9,"(2E16.8)") EPT(I,1), EPT(I,2)
+END DO
+WRITE(6,*) "Raw coordinates of points"
+WRITE(6,"(2F10.5)") TRANSPOSE(EPT(1:11,1:2))
+
+! CONVERT PANELING TO CLOCKWISE
+
+DO I=1,N
+    ! EP(I,1)=EPT(N-I+1,1)
+    ! EP(I,2)=EPT(N-I+1,2)
+    EP(I,1)=EPT(I,1)
+    EP(I,2)=EPT(I,2)
+END DO
+
+! ESTABLISH COORDINATES OF PANEL END POINTS
+
+DO I=1,M
+    PT1(I,1)=EP(I,1)
+    PT2(I,1)=EP(I+1,1)
+    PT1(I,2)=EP(I,2)
+    PT2(I,2)=EP(I+1,2)
+END DO
+WRITE(6,*) "Panel start points"
+WRITE(6,"(2F10.5)") TRANSPOSE(PT1(1:10,1:2))
+WRITE(6,*) "Panel end points"
+WRITE(6,"(2F10.5)") TRANSPOSE(PT2(1:10,1:2))
+
+! FIND PANEL ANGLES TH(J)
+
+DO I=1,M
+    DZ=PT2(I,2)-PT1(I,2)
+    DX=PT2(I,1)-PT1(I,1)
+    TH(I)=ATAN2(DZ,DX)
+END DO
+WRITE(6,*) "Panel angles"
+WRITE(6, "(F10.5)") TH(1:10)
+
+! ESTABLISH COLLOCATION POINTS
+
+DO I=1,M
+    CO(I,1)=(PT2(I,1)-PT1(I,1))/2+PT1(I,1)
+    CO(I,2)=(PT2(I,2)-PT1(I,2))/2+PT1(I,2)
+END DO
+WRITE(6,*) "Collocation points"
+WRITE(6,"(2F10.5)") TRANSPOSE(CO(1:10,1:2))
+
+! ESTABLISH INFLUENCE COEFFICIENTS
+
+DO I=1,M
+    DO J=1,M
+        ! CONVERT COLLOCATION POINT INTO LOCAL PANEL COORDS.
+        X2T=PT2(J,1)-PT1(J,1) ! dx of panel in global coords
+        Z2T=PT2(J,2)-PT1(J,2) ! dz of panel in global coords
+        XT=CO(I,1)-PT1(J,1)   ! distance from collocation point I to start point of panel J in global coords
+        ZT=CO(I,2)-PT1(J,2)
+        X2=X2T*COS(TH(J))+Z2T*SIN(TH(J)) ! length of panel in element/local coords
+        Z2=0
+        X=XT*COS(TH(J))+ZT*SIN(TH(J)) ! distance from colloc. point I to start point of panel J in element/local coords
+        Z=-XT*SIN(TH(J))+ZT*COS(TH(J))
+
+        ! SAVE PANEL LENGTHS FOR LATER USE
+        IF(I.EQ.1) THEN
+            DL(J)=X2
+        END IF
+
+        R1=SQRT(X**2+Z**2)
+        R2=SQRT((X-X2)**2+Z**2)
+        TH1=ATAN2(Z,X)
+        TH2=ATAN2(Z,X-X2)
+
+        IF(I.EQ.J) THEN
+            UL=0.5
+            WL=0
+        ELSE
+            UL=0.15916*(TH2-TH1)
+            WL=0.15916*LOG(R2/R1)
+        END IF
+
+        U=UL*COS(-TH(J))+WL*SIN(-TH(J))
+        W=-UL*SIN(-TH(J))+WL*COS(-TH(J))
+
+        ! A(I,J) IS THE COMPONENT OF VELOCITY NORMAL TO
+        ! THE AIRFOIL INDUCED BY THE JTH PANEL AT THE
+        ! ITH COLLOCATION POINT.
+        A(I,J)=-U*SIN(TH(I))+W*COS(TH(I))
+        B(I,J)=U*COS(TH(I))+W*SIN(TH(I))
+    END DO
+    A(I,N)=COS(AL)*SIN(TH(I))-SIN(AL)*COS(TH(I)) ! component of free stream velocity normal to element I
+END DO
+
+! REPLACE EQUATION M/4 WITH A KUTTA CONDITION
+
+!!! OLD CODE
+DO J=I,M+1
+    A(M/4,J)=0
+END DO
+A(M/4,1)=1
+A(M/4,M)=1
+
+!DO J=1,M+1
+!    A(M+1,J)=0
+!END DO
+!A(M+1,1)=1
+!A(M+1,M)=1
+
+WRITE(6,"(11F8.3)") TRANSPOSE(A(1:11,1:11))
+! SOLVE FOR THE SOLUTION VECTOR OF VORTEX STRENGTHS
+CALL MATRX(A,N,G)
+
+! CONVERT SOURCE STRENGTHS INTO TANGENTIAL
+! VELOCITIES ALONG THE AIRFOIL SURFACE AND CP'S
+! ON EACH OF THE PANELS
+
+WRITE(6,*) "Vortex strengths"
+WRITE(6,"(F8.3)") G(1:10)
+
+200 CONTINUE
+CL=0
+DO I=1,M
+    TEMP=0
+    DO J=1,M
+        TEMP=TEMP+B(I,J)*G(J)
+    END DO
+    VEL(I)=TEMP+COS(AL)*COS(TH(I))+SIN(AL)*SIN(TH(I))
+    CL=CL+VEL(I)*DL(I)
+END DO
+WRITE(6,*) 'SMOOTH THE VELOCITY DISTRIBUTION?'
+WRITE(6,*) '1=YES'
+WRITE(6,*) '2=NO'
+READ(5,*) ANS1
+DO I=1,M
+    IF(ANS1.EQ.1) THEN
+        CP=1-((VEL(I)+VEL(I-1))/2)**2
+        WRITE(8,*) PT2(I-1,1),' ,',CP
+    ELSE
+        CP=1-VEL(I)**2
+        WRITE(8,*) CO(I,1),' ,',CP
+    END IF
+END DO
+WRITE(6,*) ' '
+WRITE(6,*) 'LIFT COEFFICIENT=', CL
+STOP
+END
+
+SUBROUTINE MATRX(A,N,G)
+
+! MATRX IS A MATRIX REDUCER OF THE GAUSSIAN TYPE
+! A(I,J) IS THE MATRIX, A(I,N) IS THE RHS VECTOR
+! AND G(I) IS THE SOLUTION VECTOR.
+
+REAL A(400,400),TEMP(400,400),G(400)
+
+! INITIALIZE THE G VECTOR TO ALL ZEROES
+
+DO I=1,N-1
+    G(I)=0
+END DO
+
+! CONVERT COEFFICIENT MATRIX TO
+! UPPER TRIANGULAR FORM
+
+DO I=1,N-1
+    5 IF(ABS(A(I,I)).LT.0.0000001) GOTO 8
+
+    P=A(I,I)
+    DO J=I,N
+        A(I,J)=A(I,J)/P
+    END DO
+
+    DO K=I+1,N-1
+        P2=A(K,I)
+        DO L=I,N
+            A(K,L)=A(K,L)-P2*A(I,L)
+        END DO
+    END DO
+END DO
+
+! BACK SUBSTITUTE TRIANGULARIZED MATRIX TO GET
+! VALUES OF SOLUTION VECTOR
+
+DO I=N-1,1,-1
+    G(I)=A(I,N)
+    DO J=1,N-1
+        A(I,I)=0
+        G(I)=G(I)-A(I,J)*G(J)
+    END DO
+END DO
+
+RETURN
+
+! ORDER MATRIX SO THAT DIAGONAL COEFFICIENTS ARE
+! NOT =0 AND STOP IS MATRIX IS SINGULAR
+
+8 IF(I.NE.N-1) THEN
+    DO J=1,N
+        TEMP(I,J)=A(I,J)
+        A(I,J)=A(I+1,J)
+        A(I+1,J)=TEMP(I,J)
+    END DO
+    GOTO 5
+ELSE
+    GOTO 9
+END IF
+
+9 WRITE(6,*) 'NO SOLUTION'
+STOP
+END
